@@ -1,8 +1,9 @@
 from database_utils import DatabaseConnector
-import pandas as pd
-import tabula 
-import requests
 import boto3
+import pandas as pd
+import requests
+import tabula 
+
 
 class DataExtractor():
     """
@@ -13,7 +14,7 @@ class DataExtractor():
         """
         Initializes the DataExtractor instance.
         """
-        self.db_connector = DatabaseConnector("/Users/TheBoss/Desktop/AICore/retail_data_project/db_creds.yaml")
+        self.db_connector = DatabaseConnector(".../db_creds.yaml")
         self.db_engine = self.db_connector.db_engine
         self.db_creds = self.db_connector.db_creds
 
@@ -23,9 +24,6 @@ class DataExtractor():
 
         Parameters:
         - table_name (str): Name of the table to read from.
-
-        Returns:
-        - table_data (pandas DataFrame): Data from the specified table.
         """
         table_data = pd.read_sql_table(table_name, self.db_engine).set_index('index')
         return table_data
@@ -36,9 +34,6 @@ class DataExtractor():
 
         Parameters:
         - pdf_link (str): Link to PDF in S3 Bucket.
-
-        Returns: 
-        - pdf_data (pandas DataFrame): Data extracted from th PDF.
         """
         try:
             pdf_pages = tabula.read_pdf(pdf_link, pages='all')
@@ -61,9 +56,6 @@ class DataExtractor():
         Parameters:
         - number_of_stores_endpoint (str): Endpoint URL for API.
         - header (dict): Credentials to connect to the API.
-        
-        Returns:
-        - number_of_stores (int): Number of stores in the data.
         """
         response = requests.get(number_of_stores_endpoint, headers=header)
         if response.status_code == 200:
@@ -84,9 +76,6 @@ class DataExtractor():
         - store_endpoint (str): Base endpoint URL for individual store data.
         - number_of_stores (int): Number of stores to retrieve data for.
         - header (dict): Credentials to connect to the API.
-
-        Returns:
-        - store_data (pandas DataFrame): Combined data for all stores.
         """
         all_store_data = []
         for store_number in range(number_of_stores):
@@ -104,14 +93,8 @@ class DataExtractor():
         Extracts data from an AWS S3 bucket using the provided HTTP S3 URL. This method determines the file type
         (either CSV or JSON) from the URL and reads the data into a DataFrame accordingly.
 
-        Args:
+        Parameters:
             s3_url (str): HTTP URL to the S3 file.
-
-        Returns:
-            pd.DataFrame: DataFrame containing data extracted from the S3 file.
-
-        Raises:
-            ValueError: If the file type is neither CSV nor JSON.
         """
         # Parse bucket name and file path from s3_url
         bucket_name = s3_url.split('/')[2].split('.')[0]
@@ -140,9 +123,6 @@ class DataExtractor():
 
         Parameters:
         - path (str): Path to the JSON file.
-
-        Returns:
-        - json_data (pandas DataFrame): Data from the JSON file.
         """
         return pd.read_json(path)
     

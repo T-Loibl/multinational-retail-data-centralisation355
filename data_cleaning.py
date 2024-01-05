@@ -1,9 +1,7 @@
 from database_utils import DatabaseConnector
 from data_extraction import DataExtractor
-import pandas as pd
 import numpy as np
-
-
+import pandas as pd
 
 
 class DataCleaning():
@@ -15,35 +13,41 @@ class DataCleaning():
         """
         Initializes the DataCleaning instance.
         """
-        self.db_connector = DatabaseConnector("/Users/TheBoss/Desktop/AICore/retail_data_project/db_creds.yaml")
+        self.db_connector = DatabaseConnector(".../db_creds.yaml")
         self.db_extractor = DataExtractor()
 
     def _clean_country_code(self, df):
             """
             Cleans country_code column:
-            - Replaces typos such as 'GGB'
-            - Removes incorrect codes e.g. 'QVUW9JSKY3' by setting len
+            - Removes incorrect codes by setting len
             - Sets to string type
 
             Parameters:
-            - df (pd.DataFrame): dataframe containing country_code column to be cleaned.
+            - df (pd.DataFrame): dataframe containing country_code column.
             """
             df.loc[df.country_code.str.len() > 2, 'country_code'] = np.nan
             df.country_code = df.country_code.astype('string')
 
     def _clean_dates(self, df, columns):
         """
-        Cleans date data by removing incorrectly formatted data and putting in the form Year-Month-Day.
+        Cleans date data by  putting it in the Year-Month-Day format.
         
         Parameters:
-        - df (pd.DataFrame): dataframe containing columns to be cleaned.
-        - columns (arr): array of column names to be cleaned.
+        - df (pd.DataFrame): dataframe containing columns.
+        - columns (arr): array of column names.
         """
         for column_name in columns:
             df[column_name] = pd.to_datetime(df[column_name], format='mixed', errors='coerce')
             df[column_name] = df[column_name].dt.strftime('%Y-%m-%d')
 
     def _clean_phone_numbers(self, df):
+        """
+        Clean and validate phone numbers in a DataFrame based on country codes using regular expressions (regex).
+
+        Parameters:
+        - df (pandas DataFrame): The DataFrame containing 'country_code' and 'phone_number' columns.
+        """
+
         uk_regex = r"^(?:(?:\+44\s?\(0\)\s?\d{2,4}|\(?\d{2,5}\)?)\s?\d{3,4}\s?\d{3,4}$|\d{10,11}|\+44\s?\d{2,5}\s?\d{3,4}\s?\d{3,4})$"
         de_regex = r"(\(?([\d \-\)\–\+\/\(]+){6,}\)?([ .\-–\/]?)([\d]+))"
         us_regex = r"\(?\d{3}\)?-? *\d{3}-? *-?\d{4}"
@@ -66,11 +70,11 @@ class DataCleaning():
 
     def _clean_uuids(self, df, columns):
         """
-        Removes incorrect entries with incorrect uuid format.
+        Removes incorrect uuid entries.
 
         Parameters:
-        - df (pd.DataFrame): dataframe containing columns to be cleaned.
-        - columns (arr): array of columns containing uuids to be cleaned.
+        - df (pd.DataFrame): dataframe containing columns.
+        - columns (arr): array of columns containing uuids.
         """
         for column_name in columns:    
             uuid_pattern = r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
@@ -79,11 +83,11 @@ class DataCleaning():
 
     def _clean_card_providers(self, df, column_name, categories):
         """
-        Cleans column_name by filtering out values not in categories.
+        Cleans column_name by filtering out values not in the provided categories.
         
         Parameters:
-        - df (pd.DataFrame): dataframe containing column_name to be cleaned.
-        - column_name (str): column containing categories to be cleaned.
+        - df (pd.DataFrame): dataframe containing column_name.
+        - column_name (str): column containing categories.
         - categories (arr): categories that are valid in the column.
         """
         df.loc[~df[column_name].isin(categories), column_name] = np.nan
@@ -95,12 +99,13 @@ class DataCleaning():
         Clean card_number by setting to string, replacing '?', and removing strings containing letters.
 
         Parameters:
-        - df (pd.DataFrame): dataframe containing card_number column to be cleaned.
+        - df (pd.DataFrame): dataframe containing card_number column.
         """
         df['card_number']=df['card_number'].astype('string')
         df['card_number'] = df['card_number'].str.replace('?', '')
         df['card_number'] = df['card_number'].where(df['card_number'].str.contains(r'^\d+$'), np.nan)
         
+        # Can't get this to work, return to it later
         '''
     def _ensure_correct_card_number_length(self, card_data):
         card_provider_length_mapping = {
@@ -131,8 +136,8 @@ class DataCleaning():
         Cleans number data by removing letters and setting to string.
 
         Parameters:
-        - df (pd.DataFrame): dataframe containing columns to be cleaned.
-        - columns (arr): array containing columns with number data to be removed of letters.
+        - df (pd.DataFrame): dataframe containing required columns.
+        - columns (arr): array containing columns with number data from which letters will be removed.
         """
         for column in columns:
             store_data[column] = pd.to_numeric(store_data[column], errors='coerce')
@@ -140,40 +145,42 @@ class DataCleaning():
 
     def _convert_product_weights(self, products_data):
         """
-        # Copy the DataFrame to avoid modifying the original
-        products_data = products_data.copy()
-        """
+        Clean and convert the 'weight' column in the provided DataFrame to kilograms.
 
-        # Clean up the 'weight' column and convert to kilograms
+        Parameters:
+        - products_data (pandas DataFrame): The DataFrame containing the 'weight' column to be cleaned and converted.
+        """
         products_data['weight'] = products_data['weight'].apply(self._clean_and_convert_weight)
 
         return products_data
 
     def _clean_and_convert_weight(self, weight):
+        """
+        Clean and convert a weight string to kilograms.
+
+        Parameters:
+        - weight (str): The string representing the weight, possibly including a quantity.
+        """
         try:
-            # Extract quantity and weight parts
+            
             quantity, weight_str = self._extract_quantity_and_weight(weight)
 
-            # Remove non-numeric characters, including letters and symbols
             cleaned_weight = ''.join(char for char in str(weight_str) if char.isdigit() or char in ['.', ','])
 
-            # Convert to float
             cleaned_weight = float(cleaned_weight.replace(',', '.'))
 
-            # Determine the original unit of weight
             original_unit = str(weight_str).lower()
             if 'kg' in original_unit:
-                cleaned_weight_kg = float(cleaned_weight)  # Already in kilograms
+                cleaned_weight_kg = float(cleaned_weight)  
             elif 'g' in original_unit:
-                cleaned_weight_kg = float(cleaned_weight / 1000)  # Convert grams to kilograms
+                cleaned_weight_kg = float(cleaned_weight / 1000)  
             elif 'oz' in original_unit:
-                cleaned_weight_kg = float(cleaned_weight / 35.274)  # Convert ounces to kilograms
+                cleaned_weight_kg = float(cleaned_weight / 35.274)  
             elif 'ml' in original_unit:
                 cleaned_weight_kg = float(cleaned_weight / 1000)
             else:
-                cleaned_weight_kg = float(cleaned_weight)  # Default to returning the original value if the unit is not recognized
+                cleaned_weight_kg = float(cleaned_weight)  
 
-            # Multiply by quantity if available
             if quantity:
                 cleaned_weight_kg *= float(quantity)
 
@@ -184,13 +191,25 @@ class DataCleaning():
 
 
     def _extract_quantity_and_weight(self, weight):
-        # Try to extract quantity and weight from the input string
+        """
+        Extract quantity and weight parts from a given weight string.
+
+        Parameters:
+        - weight (str): The string representing the weight, possibly including a quantity.
+        """
         parts = weight.split('x', 1)
         quantity = parts[0].strip() if len(parts) > 1 else None
         weight_str = parts[-1].strip()
         return quantity, weight_str
     
     def _clean_date_numbers(self, sales_data, columns):
+        """
+        Clean and convert columns containing date numbers in the provided DataFrame.
+
+        Parameters:
+        - sales_data (pandas DataFrame): The DataFrame containing columns with date numbers to be cleaned.
+        - columns (list): List of column names to be processed.
+        """
         for column in columns:
          sales_data[column] = pd.to_numeric(sales_data[column], errors='coerce', downcast='integer')
          sales_data[column] = sales_data[column].astype('Int64').astype('string')
@@ -200,7 +219,6 @@ class DataCleaning():
         """
         Cleans the provided user_data DataFrame and returns the cleaned DataFrame.
         """
-
         user_data = user_data.dropna().drop_duplicates()
 
         self._clean_country_code(user_data)
@@ -210,7 +228,12 @@ class DataCleaning():
         return user_data
 
     def clean_card_data(self, card_data):
+        """
+        Clean and process credit card data in the provided DataFrame.
 
+        Parameters:
+        - card_data (pandas DataFrame): The DataFrame containing credit card data.
+        """
         self._clean_card_providers(card_data, 'card_provider', 
                                categories = ['Diners Club / Carte Blanche', 'American Express', 'JCB 16 digit',
         'JCB 15 digit', 'Maestro', 'Mastercard', 'Discover',
@@ -228,7 +251,12 @@ class DataCleaning():
         return card_data
     
     def clean_store_data(self, store_data):
-        
+        """
+        Clean and process store data in the provided DataFrame.
+
+        Parameters:
+        - store_data (pandas DataFrame): The DataFrame containing store-related data.
+        """
         store_data = store_data.drop(columns=['index','lat'])
         store_data = store_data.drop_duplicates()
         store_data.iloc[0] = store_data.iloc[0].fillna("N/A")
@@ -245,7 +273,12 @@ class DataCleaning():
         return store_data
     
     def clean_products_data(self, products_data):
+       """
+       Clean and process product data in the provided DataFrame.
 
+        Parameters:
+        - products_data (pandas DataFrame): The DataFrame containing product-related data.
+       """
        products_data = products_data.dropna().drop_duplicates()
 
        self._clean_dates(products_data, ['date_added'])
@@ -276,14 +309,19 @@ class DataCleaning():
         return orders_table
     
     def clean_date_times(self, sales_data):
+        """
+         Clean and process date and time data in the provided DataFrame.
 
-         sales_data = sales_data.dropna().drop_duplicates()
-         sales_data.timestamp = pd.to_datetime(sales_data.timestamp, format='%H:%M:%S', errors='coerce').dt.time
-         self._clean_card_providers(sales_data, 'time_period', categories=['Evening', 'Morning', 'Midday', 'Late_Hours'])
-         self._clean_uuids(sales_data, ['date_uuid'])
-         self._clean_date_numbers(sales_data, ['month', 'year', 'day'])
+        Parameters:
+        - sales_data (pandas DataFrame): The DataFrame containing date and time-related data.
+        """
+        sales_data = sales_data.dropna().drop_duplicates()
+        sales_data.timestamp = pd.to_datetime(sales_data.timestamp, format='%H:%M:%S', errors='coerce').dt.time
+        self._clean_card_providers(sales_data, 'time_period', categories=['Evening', 'Morning', 'Midday', 'Late_Hours'])
+        self._clean_uuids(sales_data, ['date_uuid'])
+        self._clean_date_numbers(sales_data, ['month', 'year', 'day'])
 
-         return sales_data
+        return sales_data
     
 if __name__ == "__main__":
     pass
