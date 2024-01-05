@@ -1,42 +1,90 @@
 import yaml
 import sqlalchemy
-from sqlalchemy import create_engine
-
-class DatabaseConnector: 
-    def __init__(self, RDS_HOST, RDS_PASSWORD, RDS_USER, RDS_DATABASE, RDS_PORT):
-        self.RDS_HOST = RDS_HOST
-        self.RDS_PASSWORD = RDS_PASSWORD
-        self.RDS_USER = RDS_USER
-        self.RDS_DATABASE = RDS_DATABASE
-        self.RDS_PORT = RDS_PORT
-
-    def read_db_creds(cls, file_path = '/Users/TheBoss/Desktop/AICore/retail_data_project/db_creds.yaml'):
-        with open(file_path, 'r') as file:
-                creds = yaml.safe_load(file)
-                return creds
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.exc  import SQLAlchemyError
+import psycopg2
+import pandas as pd
         
-    def init_db_engine(cls, file_path = '/Users/TheBoss/Desktop/AICore/retail_data_project/db_creds.yaml'):
-        creds = cls.read_db_creds(file_path)
+    
+class DatabaseConnector():
+    """
+    This class connects to a PostgreSQL database and provides methods to interact with it.
+    
+    Parameters:
+    - file_path (str): Path to the YAML file containing database credentials.
+    """
 
-        if creds:
-            db_url = sqlalchemy.engine.url.URL(
-                drivername = 'mysql',  # Change this to your database type if needed
-                username = creds['RDS_USER'],
-                password = creds['RDS_PASSWORD'],
-                host = creds['RDS_HOST'],
-                port = creds['RDS_PORT'],
-                database = creds['RDS_DATABASE']
-            )
+    def __init__(self, file_path):
+        """
+        Initializes the DatabaseConnector instance.
 
-            engine = create_engine(db_url)
-            return engine
+        Parameters:
+        - file_path (str): Path to the YAML file containing database credentials.
+        """  
+        self.file_path = file_path
+        self.db_creds = self.read_db_creds()
+        self.db_engine = self.init_db_engine()
         
-    def list_db_tables(cls, engine):
-        with engine.connect() as connection:
-            result = connection.execute("SHOW TABLES;")
-            tables = [table[0] for table in result.fetchall()]
-            return tables
-        
-    def upload_to_db(cls, df, table_name):
-        df.to_sql(name=table_name, con=cls.init_db_engine(), index=False, if_exists='replace')
-        print(f"Data uploaded to {table_name} successfully.")
+    def read_db_creds(self):
+        """
+        Reads and returns the database credentials from the specified YAML file.
+
+        Returns:
+        - dict: Database credentials.
+        """
+        with open(self.file_path, 'r') as file:
+            db_creds = yaml.safe_load(file)
+        return db_creds
+    
+    def init_db_engine(self):
+        """
+        Initializes and returns a SQLAlchemy database engine using the provided credentials.
+
+        Returns:
+        - sqlalchemy.engine.base.Engine: Database engine.
+        """
+        database_url = (
+        f"postgresql://{self.db_creds['RDS_USER']}:{self.db_creds['RDS_PASSWORD']}"
+        f"@{self.db_creds['RDS_HOST']}:{self.db_creds['RDS_PORT']}/{self.db_creds['RDS_DATABASE']}"
+        )
+        db_engine = create_engine(database_url)
+        return db_engine
+    
+    def list_db_tables(self):
+        """
+        Returns a list of table names present in the connected database.
+
+        Returns:
+        - list: List of table names.
+        """
+        inspector = inspect(self.db_engine)
+        db_table_list = inspector.get_table_names()
+        return db_table_list
+    
+    def upload_to_db(self, clean_dataframe, table_name: str):
+        """
+        Uploads a DataFrame to a specified table in the database. If the table exists, it is replaced.
+        Optionally sets a primary key on the specified column after the upload.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to upload.
+            table_name (str): The name of the target table in the database.
+            primary_key (str, optional): The column name to be set as the primary key.
+
+        Raises:
+            ValueError: If df is not a pandas DataFrame.
+            SQLAlchemyError: If an error occurs during the upload process.
+        """
+        if not isinstance(clean_dataframe, pd.DataFrame):
+            raise ValueError("df must be a pandas DataFrame")
+
+        try:
+            engine = self.init_db_engine()
+            with engine.begin() as conn:
+                clean_dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
+                print(f"Data uploaded successfully to table '{table_name}'")
+        except SQLAlchemyError as e:
+            print("An error occurred while uploading data to the database:", e)
+    
+if __name__ == "__main__":
+    pass
