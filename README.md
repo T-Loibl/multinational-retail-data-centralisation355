@@ -31,6 +31,39 @@ Finally, with this all inplace, the data base will be queried using SQL and the 
     
 ## Usage Instructions 
 
-    Usage instructions
-    File structure of the project
-    License information
+1. Connect to the database using the DatabaseConnector Class in `database_utils.py`.
+2. Extract the information from the various data sources using the DatabaseExtractor Class in `data_extraction.py`.
+3. Clean the extracted data using the DatabaseCleaner Class in `data_cleaning.py`.
+4. Upload the cleaned data to your database using the DatabaseConnector class.
+5. Use the SQL queries within the schema folder to set the column data types and creat the primary/foreign name keys. 
+6. Query database as you please.
+    
+
+## File Structure 
+
+The project contains the following files: 
+
+- README.md
+    - Documentation for the project. 
+
+- /Class_scripts
+    - database_utils.py: Script defining DatabaseConnector Class that runs database connections. 
+    - data_extractor.py: Script defining DataExtractor Class that extracts data from assorted sources.
+    - data_cleaning.py: Script defining DataCleaner class which cleans extracted data.
+
+- /schema
+    - dim_card_details.sql
+    - dim_date_times.sql
+    - dim_users.sql
+    - orders.sql
+    - products.sql
+    - store_details.sql
+
+- /SQL_queries
+    - /SQL_query_tasks
+    - /SQL_query_results
+    
+    
+## License Information
+
+No License
