@@ -16,8 +16,7 @@ Over the course of this project we shall create a series of python scripts conta
 The data will be drawn from a number of sources, including json files, CSV files and S3 buckets. The data is then thoroughly cleaned, taking care to remove NULL values, incorrectly entered values and 
 duplicate inputs. The clean dataframes are then uploaded to a seperate database. 
 
-Within this PGAdmin4 based database, a star-based schema is implemented, ensuring consistency across the columns with regard to datatype, thus allowing for a clear idea of how they relate and therefore
-greater interoperability. 
+Within this PGAdmin4 based database, a star-based schema is implemented, ensuring consistency across the columns with regard to datatype, thus allowing for a clear idea of how they relate and therefore greater interoperability. This is achieved by changing column datatypes to be consistent across tables, then linking the aforementioned dim_xxxx table to the main orders_table via sets of primary and foreign keys. 
 
 Finally, with this all inplace, the data base will be queried using SQL and the relevant data extracted as a final proof of proficiency. 
     
